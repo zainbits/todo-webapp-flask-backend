@@ -6,13 +6,19 @@ from project.decorators import make_secure
 from project.user.models import User
 from project.user.schema import UserSchema
 from project.todo.models import Todo
+from project.todo.schema import TodoSchema
 
 from flask import request, jsonify, make_response
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from werkzeug.security import generate_password_hash, check_password_hash
 
+from sqlalchemy.exc import InvalidRequestError
+
 users_schema = UserSchema(many=True)
 user_schema = UserSchema()
+
+todos_schema = TodoSchema(many=True)
+todo_schema = TodoSchema()
 
 
 @app.route('/user', methods=['GET'])
@@ -80,18 +86,19 @@ def login():
     auth = request.authorization
 
     if not auth or not auth.username or not auth.password:
-        return make_response({'message':'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
     user = User.query.filter_by(name=auth.username).first()
 
     if not user:
-        return make_response({'message':'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
     if check_password_hash(user.password, auth.password):
-        token = create_access_token(identity=user.name, expires_delta=datetime.timedelta(seconds=10))
+        token = create_access_token(
+            identity=user.name, expires_delta=datetime.timedelta(minutes=30))
         return jsonify({'token': token})
 
-    return make_response({'message':'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+    return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
 
 @app.route('/about', methods=['GET'])
@@ -99,16 +106,80 @@ def login():
 def about():
     current_user = get_jwt_identity()
     current_user = User.query.filter_by(name=current_user).first()
-    return jsonify({'user': current_user.admin}), 200
+    user = user_schema.dump(current_user)
+    return jsonify({'user': user}), 200
 
 
 @app.route('/todo', methods=['POST'])
+@jwt_required()
 def create_todo():
     data = request.get_json()
     current_user = get_jwt_identity()
-    current_user = User.query.filter_by(name=current_user)
+    print(current_user)
+    current_user = User.query.filter_by(name=current_user).first()
     new_todo = Todo(text=data['text'], complete=False, user_id=current_user.id)
     db.session.add(new_todo)
     db.session.commit()
 
     return jsonify({'msg': 'TODO Created'})
+
+
+@app.route('/todo/allusers', methods=['GET'])
+@jwt_required()
+@make_secure('admin')
+def get_allusers_todos():
+    todos = Todo.query.all()
+    todos = todos_schema.dump(todos)
+    return jsonify(todos)
+
+
+@app.route('/todo', methods=["GET"])
+@jwt_required()
+def get_all_todos():
+    current_user = get_jwt_identity()
+    current_user = User.query.filter_by(name=current_user).first()
+    todos = Todo.query.filter_by(user_id=current_user.id)
+    todos = todos_schema.dump(todos)
+    return jsonify(todos)
+
+
+@app.route('/todo/<todo_id>', methods=['PUT'])
+@jwt_required()
+def update_a_todo(todo_id):
+    try:
+        current_user = get_jwt_identity()
+        cuurent_user = User.query.filter_by(name=current_user).first()
+        todo = Todo.query.filter_by(
+            user_id=cuurent_user.id, id=todo_id).first()
+
+        if not todo:
+            return jsonify({'message': 'todo not found'}), 404
+
+        data = request.get_json()
+        todo = Todo.query.filter_by(
+            user_id=cuurent_user.id, id=todo_id).update(data)
+
+        db.session.commit()
+
+        todo = Todo.query.filter_by(
+            user_id=cuurent_user.id, id=todo_id).first()
+        todo = todo_schema.dump(todo)
+
+        return jsonify({'message': 'updated successfully', 'todo': todo})
+    except (InvalidRequestError):
+        return jsonify({'message': 'wrong keys passed'}), 400
+
+@app.route('/todo/<todo_id>', methods=['DELETE'])
+@jwt_required()
+def delete_todo(todo_id):
+    user = get_jwt_identity()
+    user = User.query.filter_by(name=user).first()
+    todo = Todo.query.filter_by(id=todo_id, user_id=user.id).first()
+
+    if not todo:
+        return jsonify({'message': 'todo not found'}), 404
+
+    db.session.delete(todo)
+    db.session.commit()
+    todo = todo_schema.dump(todo)
+    return jsonify({'message': 'deleted successfully', 'todo': todo}), 204
