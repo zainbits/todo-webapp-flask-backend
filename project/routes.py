@@ -22,7 +22,7 @@ todo_schema = TodoSchema()
 
 
 @app.route('/user', methods=['GET'])
-@jwt.required()
+@jwt_required()
 @make_secure
 def get_all_users():
     users = User.query.all()
