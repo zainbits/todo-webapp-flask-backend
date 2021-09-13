@@ -23,7 +23,7 @@ todo_schema = TodoSchema()
 
 @app.route('/user', methods=['GET'])
 @jwt_required()
-@make_secure
+@make_secure('admin')
 def get_all_users():
     users = User.query.all()
     data = users_schema.dump(users)
