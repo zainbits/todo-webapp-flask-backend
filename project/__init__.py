@@ -1,22 +1,30 @@
-import os
-
 from flask import Flask
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
-from flask_marshmallow import Marshmallow
 from flask_jwt_extended import JWTManager
-from dotenv import load_dotenv
-load_dotenv()
-
-app = Flask(__name__)
-app.config['JWT_SECRET_KEY'] = os.environ.get('SECRET_KEY')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-    'SQLALCHEMY_DATABASE_URI')
-
-db = SQLAlchemy(app)
-ma = Marshmallow(app)
-jwt = JWTManager(app)
-CORS(app)
+from flask_marshmallow import Marshmallow
+from flask_sqlalchemy import SQLAlchemy
 
 from project import routes
+from project.config import Config
+
+db = SQLAlchemy()
+ma = Marshmallow()
+jwt = JWTManager()
+
+
+def create_app(config_class=Config):
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    CORS(app)
+
+    db.init_app(app)
+    ma.init_app(app)
+    jwt.init_app(app)
+
+    from project.todo.routes import todo
+    from project.user.routes import user
+
+    app.register_blueprint(user)
+    app.register_blueprint(todo)
+
+    return app
