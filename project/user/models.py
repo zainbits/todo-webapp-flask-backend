@@ -7,3 +7,6 @@ class User(db.Model):
     name = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(255))
     admin = db.Column(db.Boolean)
+
+    def __repr__(self):
+        return self.name

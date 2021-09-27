@@ -51,7 +51,7 @@ def about():
     return jsonify({'user': user}), 200
 
 
-@user.route('/user', methods=['GET'])
+@user.route('/users', methods=['GET'])
 @jwt_required()
 @make_secure('admin')
 def get_all_users():
@@ -62,6 +62,7 @@ def get_all_users():
 
 @user.route('/user/<public_id>', methods=['GET'])
 @jwt_required()
+@make_secure('admin')
 def get_one_user(public_id):
     user = User.query.filter_by(public_id=public_id).first()
 
@@ -80,10 +81,10 @@ def create_user():
                     name=data['name'], password=hashed_password, admin=False)
     db.session.add(new_user)
     db.session.commit()
-    return jsonify({"message": "New user created"})
+    return jsonify({"message": "New user created"}), 201
 
 
-@user.route('/user/<public_id>', methods=['PUT'])
+@user.route('/admin/promote/<public_id>', methods=['PUT'])
 @jwt_required()
 @make_secure('admin')
 def promote_user(public_id):
@@ -95,10 +96,23 @@ def promote_user(public_id):
     user.admin = True
     db.session.commit()
 
-    return jsonify({"message": "user has been promoted to admin"})
+    return jsonify({"message": "user has been promoted to admin", "admin": user.admin})
 
+@user.route('/admin/demote/<public_id>', methods=['PUT'])
+@jwt_required()
+@make_secure('admin')
+def demote_user(public_id):
+    user = User.query.filter_by(public_id=public_id).first()
 
-@user.route('/user/<public_id>', methods=['DELETE'])
+    if not user:
+        return jsonify({"message": "no user found"})
+
+    user.admin = False
+    db.session.commit()
+
+    return jsonify({"message": "user has been promoted to admin", "admin": user.admin})
+
+@user.route('/admin/delete/<public_id>', methods=['DELETE'])
 @jwt_required()
 @make_secure('admin')
 def delete_user(public_id):
@@ -110,4 +124,4 @@ def delete_user(public_id):
     db.session.delete(user)
     db.session.commit()
 
-    return jsonify({"message": "the user has been deleted"})
+    return jsonify({"message": "the user has been deleted"}), 200

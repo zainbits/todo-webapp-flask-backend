@@ -27,16 +27,15 @@ todo_schema = TodoSchema()
 def create_todo():
     data = request.get_json()
     current_user = get_jwt_identity()
-    print(current_user)
     current_user = User.query.filter_by(name=current_user).first()
     new_todo = Todo(text=data['text'], complete=False, user_id=current_user.id)
     db.session.add(new_todo)
     db.session.commit()
 
-    return jsonify({'msg': 'TODO Created'})
+    return jsonify({'msg': 'TODO Created'}), 200
 
 
-@todo.route('/todo/allusers', methods=['GET'])
+@todo.route('/admin/todo/allusers', methods=['GET'])
 @jwt_required()
 @make_secure('admin')
 def get_allusers_todos():
@@ -52,7 +51,7 @@ def get_all_todos():
     current_user = User.query.filter_by(name=current_user).first()
     todos = Todo.query.filter_by(user_id=current_user.id)
     todos = todos_schema.dump(todos)
-    return jsonify(todos)
+    return jsonify(todos), 200
 
 
 @todo.route('/todo/<todo_id>', methods=['PUT'])
@@ -60,26 +59,35 @@ def get_all_todos():
 def update_a_todo(todo_id):
     try:
         current_user = get_jwt_identity()
-        cuurent_user = User.query.filter_by(name=current_user).first()
+        current_user = User.query.filter_by(name=current_user).first()
         todo = Todo.query.filter_by(
-            user_id=cuurent_user.id, id=todo_id).first()
+            user_id=current_user.id, id=todo_id).first()
 
         if not todo:
-            return jsonify({'message': 'todo not found'}), 404
+            return jsonify({'message': 'todo not found'}),\
+                404
 
         data = request.get_json()
         todo = Todo.query.filter_by(
-            user_id=cuurent_user.id, id=todo_id).update(data)
+            user_id=current_user.id, id=todo_id).\
+            update(data)
 
         db.session.commit()
 
         todo = Todo.query.filter_by(
-            user_id=cuurent_user.id, id=todo_id).first()
+            user_id=current_user.id, id=todo_id).first()
         todo = todo_schema.dump(todo)
 
-        return jsonify({'message': 'updated successfully', 'todo': todo})
+        return jsonify({
+            'message': 'updated successfully',
+            'todo': todo
+        }),\
+            204
     except (InvalidRequestError):
-        return jsonify({'message': 'wrong keys passed'}), 400
+        return jsonify({
+            'message': 'wrong keys passed'
+        }),\
+            400
 
 
 @todo.route('/todo/<todo_id>', methods=['DELETE'])
@@ -87,12 +95,33 @@ def update_a_todo(todo_id):
 def delete_todo(todo_id):
     user = get_jwt_identity()
     user = User.query.filter_by(name=user).first()
-    todo = Todo.query.filter_by(id=todo_id, user_id=user.id).first()
+    todo = Todo.query.\
+        filter_by(id=todo_id, user_id=user.id).first()
 
     if not todo:
-        return jsonify({'message': 'todo not found'}), 404
+        return jsonify({'message': 'todo not found'}),\
+            404
 
     db.session.delete(todo)
     db.session.commit()
     todo = todo_schema.dump(todo)
-    return jsonify({'message': 'deleted successfully', 'todo': todo}), 204
+    return jsonify({'message': 'deleted successfully',
+                    'todo': todo}), 200
+
+
+@todo.route("/admin/todo/<todo_id>", methods=["DELETE"])
+@jwt_required()
+@make_secure("admin")
+def delete_any_todo(todo_id):
+    todo = Todo.query.\
+        filter_by(id=todo_id).first()
+
+    if not todo:
+        return jsonify({'message': 'todo not found'}),\
+            404
+
+    db.session.delete(todo)
+    db.session.commit()
+    todo = todo_schema.dump(todo)
+    return jsonify({'message': 'deleted successfully',
+                    'todo': todo}), 200
