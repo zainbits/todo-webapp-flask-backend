@@ -10,7 +10,7 @@ from project.todo.models import Todo
 from project.todo.schema import TodoSchema
 from project.user.models import User
 from project.user.schema import UserSchema
-from sqlalchemy.exc import InvalidRequestError
+from sqlalchemy.exc import InvalidRequestError, IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 user = Blueprint('user', __name__)
@@ -79,8 +79,12 @@ def create_user():
     hashed_password = generate_password_hash(data['password'], method='sha256')
     new_user = User(public_id=str(uuid.uuid4()),
                     name=data['name'], password=hashed_password, admin=False)
-    db.session.add(new_user)
-    db.session.commit()
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+    except IntegrityError as err:
+        if "violates unique constraint" in str(err):
+            return jsonify({"message": "Username is already taken"}), 409
     return jsonify({"message": "New user created"}), 201
 
 
