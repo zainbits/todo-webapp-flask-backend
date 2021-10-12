@@ -47,7 +47,10 @@ def get_allusers_todos():
 @todo.route('/todo', methods=["GET"])
 @jwt_required()
 def get_all_todos():
-    current_user = get_jwt_identity()
+    try:
+        current_user = get_jwt_identity()
+    except Exception as e:
+        print(e)
     current_user = User.query.filter_by(name=current_user).first()
     todos = Todo.query.filter_by(user_id=current_user.id)
     todos = todos_schema.dump(todos)

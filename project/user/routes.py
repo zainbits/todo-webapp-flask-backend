@@ -36,7 +36,7 @@ def login():
 
     if check_password_hash(user.password, auth.password):
         token = create_access_token(
-            identity=user.name, expires_delta=datetime.timedelta(minutes=30))
+            identity=user.name, expires_delta=datetime.timedelta(minutes=120))
         return jsonify({'token': token})
 
     return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
