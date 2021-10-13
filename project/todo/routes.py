@@ -56,6 +56,28 @@ def get_all_todos():
     todos = todos_schema.dump(todos)
     return jsonify(todos), 200
 
+@todo.route('/todo/<todo_id>', methods=['GET'])
+@jwt_required()
+def get_one_todo(todo_id):
+    try:
+        current_user = get_jwt_identity()
+        current_user = User.query.filter_by(name=current_user).first()
+        todo = Todo.query.filter_by(user_id=current_user.id, id=todo_id).first()
+
+        if not todo:
+            return jsonify({'message': 'todo not found'}),\
+                404
+
+        todo = todo_schema.dump(todo)
+        return jsonify({
+            'todo': todo,
+        }),\
+            200
+    except (InvalidRequestError):
+        return jsonify({
+            'message': 'wrong keys passed'
+        }),\
+            400
 
 @todo.route('/todo/<todo_id>', methods=['PUT'])
 @jwt_required()
