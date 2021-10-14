@@ -1,5 +1,5 @@
-from project import ma
 from marshmallow import fields
+from project import ma
 
 
 class UserSchema(ma.Schema):

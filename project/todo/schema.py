@@ -1,5 +1,6 @@
-from project import ma
 from marshmallow import fields
+from project import ma
+
 
 class TodoSchema(ma.Schema):
     id = fields.Integer()
