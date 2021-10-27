@@ -41,6 +41,24 @@ def login():
 
     return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
+@user.route('/bodylogin', methods=['POST'])
+def bodylogin():
+    data = request.get_json()
+
+    if not data or not data['username'] or not data['password']:
+        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+
+    user = User.query.filter_by(name=data['username']).first()
+
+    if not user:
+        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+
+    if check_password_hash(user.password, data['password']):
+        token = create_access_token(
+            identity=user.name, expires_delta=datetime.timedelta(minutes=120))
+        return jsonify({'token': token})
+
+    return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
 @user.route('/about', methods=['GET'])
 @jwt_required()
