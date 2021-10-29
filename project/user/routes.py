@@ -6,11 +6,10 @@ from flask_jwt_extended import (create_access_token, get_jwt_identity,
                                 jwt_required)
 from project import db
 from project.decorators import make_secure
-from project.todo.models import Todo
 from project.todo.schema import TodoSchema
 from project.user.models import User
 from project.user.schema import UserSchema
-from sqlalchemy.exc import InvalidRequestError, IntegrityError
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 user = Blueprint('user', __name__)
@@ -27,38 +26,40 @@ def login():
     auth = request.authorization
 
     if not auth or not auth.username or not auth.password:
-        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+        return make_response({'message': 'Could not verify'}, 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
     user = User.query.filter_by(name=auth.username).first()
 
     if not user:
-        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+        return make_response({'message': 'Could not verify'}, 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
     if check_password_hash(user.password, auth.password):
         token = create_access_token(
             identity=user.name, expires_delta=datetime.timedelta(minutes=120))
         return jsonify({'token': token})
 
-    return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+    return make_response({'message': 'Could not verify'}, 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+
 
 @user.route('/bodylogin', methods=['POST'])
 def bodylogin():
     data = request.get_json()
 
     if not data or not data['username'] or not data['password']:
-        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+        return make_response({'message': 'Could not verify'}, 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
     user = User.query.filter_by(name=data['username']).first()
 
     if not user:
-        return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+        return make_response({'message': 'Could not verify'}, 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
     if check_password_hash(user.password, data['password']):
         token = create_access_token(
             identity=user.name, expires_delta=datetime.timedelta(minutes=120))
         return jsonify({'token': token})
 
-    return make_response({'message': 'Could not verify'},  401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+    return make_response({'message': 'Could not verify'}, 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
+
 
 @user.route('/about', methods=['GET'])
 @jwt_required()
@@ -120,6 +121,7 @@ def promote_user(public_id):
 
     return jsonify({"message": "user has been promoted to admin", "admin": user.admin})
 
+
 @user.route('/admin/demote/<public_id>', methods=['PUT'])
 @jwt_required()
 @make_secure('admin')
@@ -133,6 +135,7 @@ def demote_user(public_id):
     db.session.commit()
 
     return jsonify({"message": "user has been promoted to admin", "admin": user.admin})
+
 
 @user.route('/admin/delete/<public_id>', methods=['DELETE'])
 @jwt_required()
